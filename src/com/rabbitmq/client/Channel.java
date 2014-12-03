@@ -17,15 +17,16 @@
 package com.rabbitmq.client;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
+import com.rabbitmq.client.AMQP.Basic;
 import com.rabbitmq.client.AMQP.BasicProperties;
+import com.rabbitmq.client.AMQP.Confirm;
 import com.rabbitmq.client.AMQP.Exchange;
 import com.rabbitmq.client.AMQP.Queue;
 import com.rabbitmq.client.AMQP.Tx;
-import com.rabbitmq.client.AMQP.Basic;
-import com.rabbitmq.client.AMQP.Confirm;
 
 /**
  * Public API: Interface to an AMQ channel. See the <a href="http://www.amqp.org/">spec</a> for details.
@@ -282,6 +283,21 @@ public interface Channel extends ShutdownNotifier {
      */
     void basicPublish(String exchange, String routingKey, boolean mandatory, boolean immediate, BasicProperties props, byte[] body)
             throws IOException;
+
+    /**
+     * Publish a message
+     * @see com.rabbitmq.client.AMQP.Basic.Publish
+     * @param exchange the exchange to publish the message to
+     * @param routingKey the routing key
+     * @param mandatory true if the 'mandatory' flag is to be set
+     * @param immediate true if the 'immediate' flag is to be
+     * set. Note that the RabbitMQ server does not support this flag.
+     * @param props other properties for the message - routing headers etc
+     * @param body a collection of byte[] comprising the message body
+     * @throws java.io.IOException if an error is encountered
+     */
+    void basicPublish(String exchange, String routingKey, boolean mandatory, boolean immediate, BasicProperties props,
+            Collection<byte[]> body) throws IOException;
 
     /**
      * Actively declare a non-autodelete, non-durable exchange with no extra arguments

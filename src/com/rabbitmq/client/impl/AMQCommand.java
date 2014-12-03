@@ -19,6 +19,7 @@ package com.rabbitmq.client.impl;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Collection;
 
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Command;
@@ -47,7 +48,7 @@ public class AMQCommand implements Command {
 
     /** Construct a command ready to fill in by reading frames */
     public AMQCommand() {
-        this(null, null, null);
+        this(null, null, (byte[]) null);
     }
 
     /**
@@ -55,7 +56,7 @@ public class AMQCommand implements Command {
      * @param method the wrapped method
      */
     public AMQCommand(com.rabbitmq.client.Method method) {
-        this(method, null, null);
+        this(method, null, (byte[]) null);
     }
 
     /**
@@ -65,6 +66,16 @@ public class AMQCommand implements Command {
      * @param body the message body data
      */
     public AMQCommand(com.rabbitmq.client.Method method, AMQContentHeader contentHeader, byte[] body) {
+        this.assembler = new CommandAssembler((Method) method, contentHeader, body);
+    }
+
+    /**
+     * Construct a command with a specified method, header and body.
+     * @param method the wrapped method
+     * @param contentHeader the wrapped content header
+     * @param body an array of byte[] comprising the message body data
+     */
+    public AMQCommand(com.rabbitmq.client.Method method, AMQContentHeader contentHeader, Collection<byte[]> body) {
         this.assembler = new CommandAssembler((Method) method, contentHeader, body);
     }
 
@@ -101,23 +112,24 @@ public class AMQCommand implements Command {
             Method m = this.assembler.getMethod();
             connection.writeFrame(m.toFrame(channelNumber));
             if (m.hasContent()) {
-                byte[] body = this.assembler.getContentBody();
-
                 connection.writeFrame(this.assembler.getContentHeader()
-                        .toFrame(channelNumber, body.length));
+                        .toFrame(channelNumber, this.assembler.getContentLength()));
 
-                int frameMax = connection.getFrameMax();
-                int bodyPayloadMax = (frameMax == 0) ? body.length : frameMax
-                        - EMPTY_FRAME_SIZE;
+                for (byte[] body : this.assembler.fragments()) {
 
-                for (int offset = 0; offset < body.length; offset += bodyPayloadMax) {
-                    int remaining = body.length - offset;
+                    int frameMax = connection.getFrameMax();
+                    int bodyPayloadMax = (frameMax == 0) ? body.length : frameMax
+                            - EMPTY_FRAME_SIZE;
 
-                    int fragmentLength = (remaining < bodyPayloadMax) ? remaining
-                            : bodyPayloadMax;
-                    Frame frame = Frame.fromBodyFragment(channelNumber, body,
-                            offset, fragmentLength);
-                    connection.writeFrame(frame);
+                    for (int offset = 0; offset < body.length; offset += bodyPayloadMax) {
+                        int remaining = body.length - offset;
+
+                        int fragmentLength = (remaining < bodyPayloadMax) ? remaining
+                                : bodyPayloadMax;
+                        Frame frame = Frame.fromBodyFragment(channelNumber, body,
+                                offset, fragmentLength);
+                        connection.writeFrame(frame);
+                    }
                 }
             }
         }

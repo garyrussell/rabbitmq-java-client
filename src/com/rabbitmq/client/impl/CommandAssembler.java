@@ -18,6 +18,7 @@ package com.rabbitmq.client.impl;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import com.rabbitmq.client.AMQP;
@@ -41,7 +42,7 @@ final class CommandAssembler {
 
     /** The method for this command */
     private Method method;
-    
+
     /** The content header for this command */
     private AMQContentHeader contentHeader;
 
@@ -60,6 +61,25 @@ final class CommandAssembler {
         this.bodyLength = 0;
         this.remainingBodyBytes = 0;
         appendBodyFragment(body);
+        if (method == null) {
+            this.state = CAState.EXPECTING_METHOD;
+        } else if (contentHeader == null) {
+            this.state = method.hasContent() ? CAState.EXPECTING_CONTENT_HEADER : CAState.COMPLETE;
+        } else {
+            this.remainingBodyBytes = contentHeader.getBodySize() - this.bodyLength;
+            updateContentBodyState();
+        }
+    }
+
+    public CommandAssembler(Method method, AMQContentHeader contentHeader, Collection<byte[]> body) {
+        this.method = method;
+        this.contentHeader = contentHeader;
+        this.bodyN = new ArrayList<byte[]>(body.size() + 1);
+        this.bodyLength = 0;
+        this.remainingBodyBytes = 0;
+        for (byte[] frag : body) {
+            appendBodyFragment(frag);
+        }
         if (method == null) {
             this.state = CAState.EXPECTING_METHOD;
         } else if (contentHeader == null) {
@@ -123,8 +143,12 @@ final class CommandAssembler {
 
     /** Stitches together a fragmented content body into a single byte array */
     private byte[] coalesceContentBody() {
-        if (this.bodyLength == 0) return EMPTY_BYTE_ARRAY;
-        if (this.bodyN.size() == 1) return this.bodyN.get(0);
+        if (this.bodyLength == 0) {
+            return EMPTY_BYTE_ARRAY;
+        }
+        if (this.bodyN.size() == 1) {
+            return this.bodyN.get(0);
+        }
 
         byte[] body = new byte[bodyLength];
         int offset = 0;
@@ -137,12 +161,22 @@ final class CommandAssembler {
         return body;
     }
 
+    public int getContentLength() {
+        return this.bodyLength;
+    }
+
+    public Iterable<byte[]> fragments() {
+        return this.bodyN;
+    }
+
     public synchronized byte[] getContentBody() {
         return coalesceContentBody();
     }
 
     private void appendBodyFragment(byte[] fragment) {
-        if (fragment == null || fragment.length == 0) return;
+        if (fragment == null || fragment.length == 0) {
+            return;
+        }
         bodyN.add(fragment);
         bodyLength += fragment.length;
     }

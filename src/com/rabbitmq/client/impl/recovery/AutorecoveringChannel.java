@@ -18,6 +18,7 @@ import com.rabbitmq.client.impl.AMQImpl;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
@@ -166,6 +167,10 @@ public class AutorecoveringChannel implements Channel, Recoverable {
     }
 
     public void basicPublish(String exchange, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, byte[] body) throws IOException {
+        delegate.basicPublish(exchange, routingKey, mandatory, immediate, props, body);
+    }
+
+    public void basicPublish(String exchange, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, Collection<byte[]> body) throws IOException {
         delegate.basicPublish(exchange, routingKey, mandatory, immediate, props, body);
     }
 

@@ -654,6 +654,29 @@ public class ChannelN extends AMQChannel implements com.rabbitmq.client.Channel 
     }
 
     /** Public API - {@inheritDoc} */
+    public void basicPublish(String exchange, String routingKey,
+                             boolean mandatory, boolean immediate,
+                             BasicProperties props, Collection<byte[]> body)
+        throws IOException
+    {
+        if (nextPublishSeqNo > 0) {
+            unconfirmedSet.add(getNextPublishSeqNo());
+            nextPublishSeqNo++;
+        }
+        BasicProperties useProps = props;
+        if (props == null) {
+            useProps = MessageProperties.MINIMAL_BASIC;
+        }
+        transmit(new AMQCommand(new Basic.Publish.Builder()
+                                    .exchange(exchange)
+                                    .routingKey(routingKey)
+                                    .mandatory(mandatory)
+                                    .immediate(immediate)
+                                .build(),
+                                useProps, body));
+    }
+
+    /** Public API - {@inheritDoc} */
     public Exchange.DeclareOk exchangeDeclare(String exchange, String type,
                                               boolean durable, boolean autoDelete,
                                               Map<String, Object> arguments)

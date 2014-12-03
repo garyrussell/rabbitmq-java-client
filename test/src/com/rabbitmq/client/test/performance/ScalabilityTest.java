@@ -309,7 +309,7 @@ public class ScalabilityTest {
         for (int n = 0; n < params.messageCount; n ++) {
             String key = routingKeys[r.nextInt(size)];
             channel.basicPublish("amq.direct", key, mandatory, immdediate,
-                                 MessageProperties.MINIMAL_BASIC, null);
+                                 MessageProperties.MINIMAL_BASIC, (byte[])null);
         }
 
         // wait for the returns to come back
